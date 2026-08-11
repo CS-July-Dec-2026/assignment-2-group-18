@@ -1,0 +1,3 @@
+# Don't commit files uploaded during local testing/recording
+public/uploads/*
+!public/uploads/.gitkeep

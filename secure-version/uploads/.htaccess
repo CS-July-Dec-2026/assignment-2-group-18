@@ -1,0 +1,6 @@
+# FIX: disables PHP execution in this folder so even if a malicious
+# file ever landed here, it would be served as inert text, not run.
+php_flag engine off
+RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .pht .phar .cgi .pl
+AddType text/plain .php .phtml .php3 .php4 .php5 .php7 .pht .phar .cgi .pl
+Options -Indexes
