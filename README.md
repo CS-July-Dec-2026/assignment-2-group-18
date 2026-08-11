@@ -1,5 +1,5 @@
 📷 PixelNest — Insecure File Upload (CWE-434) Demo
-Assigned vulnerability: CWE-434 — Unrestricted Upload of File with Dangerous Type Video demo: 🔗 [add your Google Drive link here after recording/uploading]
+Assigned vulnerability: CWE-434 — Unrestricted Upload of File with Dangerous Type Video demo: 🔗 [https://drive.google.com/drive/u/2/folders/16T6WR-Cm8drJN0EQF_O-YBMFBYc2vBtk]
 
 PixelNest is a deliberately vulnerable "upload a profile photo" web app, built to demonstrate CWE-434 end to end: a realistic three-part flaw, a working exploit that achieves remote code execution, and a fully corrected version that blocks it.
 
