@@ -89,13 +89,3 @@ insecure-upload-demo/
     └── uploads/
         └── .htaccess         disables script execution
 ```
-
-#Team Members
-  Name	             Roll No.
-Amelia Rubey	      IIT2024206
-Princi Kannaujiya	   IIT2024186
-Banshika Aggarwal 	IIT2024184
-Surbhi Kumari	      IIT2024141
-Fatima Hussain	      IIT2024188
-
----
