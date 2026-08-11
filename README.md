@@ -52,8 +52,6 @@ Open `http://127.0.0.1:8000` and `http://127.0.0.1:8001` in your browser.
 
 ## Reproducing the exploit
 
-⚠️ Local testing only — don't run this against a server you don't own.
-
 1. Create a file named `shell.jpg.php` containing a minimal PHP script that runs a
    command passed in a `cmd` query parameter (see the video for the exact code —
    left out here since some antivirus tools flag web-shell snippets even in plain text).
