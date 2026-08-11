@@ -91,9 +91,3 @@ insecure-upload-demo/
     └── uploads/
         └── .htaccess         disables script execution
 ```
-
-## Disclaimer
-
-Built for a classroom assignment on secure coding practices only. Do not deploy
-this app, or its upload-handling pattern, anywhere reachable from the public
-internet. Keep all testing on `127.0.0.1` or an isolated network you control.
